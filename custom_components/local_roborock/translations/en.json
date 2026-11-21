@@ -1,0 +1,27 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Connect to Local Roborock S6",
+        "description": "Configure local UDP connection (port 54321) to your Roborock S6. Xiaomi Cloud fields are optional and only used to refresh cached .rrmap files.",
+        "data": {
+          "host": "IP Address",
+          "token": "32-character hex miIO Token",
+          "scan_interval": "Polling Interval (seconds)",
+          "xiaomi_country": "Xiaomi Cloud Server Country (de, cn, us, sg)",
+          "xiaomi_user_id": "Xiaomi User ID (optional for map refresh)",
+          "xiaomi_service_token": "Xiaomi Service Token (optional for map refresh)",
+          "xiaomi_ssecurity": "Xiaomi ssecurity Key (optional for map refresh)"
+        }
+      }
+    },
+    "error": {
+      "cannot_connect": "Failed to connect to the vacuum over UDP port 54321.",
+      "invalid_token": "Token must be a valid 32-character hexadecimal string.",
+      "unknown": "Unexpected error occurred."
+    },
+    "abort": {
+      "already_configured": "This Roborock S6 vacuum is already configured."
+    }
+  }
+}

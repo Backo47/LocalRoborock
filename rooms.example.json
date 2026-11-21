@@ -1,0 +1,41 @@
+{
+  "floors": [
+    {
+      "map_flag": 0,
+      "name": "Ground Floor",
+      "rooms": [
+        {
+          "segment_id": 16,
+          "iot_id": "",
+          "name": "Living Room"
+        },
+        {
+          "segment_id": 17,
+          "iot_id": "",
+          "name": "Hallway"
+        },
+        {
+          "segment_id": 18,
+          "iot_id": "",
+          "name": "Kitchen"
+        }
+      ]
+    },
+    {
+      "map_flag": 1,
+      "name": "First Floor",
+      "rooms": [
+        {
+          "segment_id": 16,
+          "iot_id": "",
+          "name": "Bedroom"
+        },
+        {
+          "segment_id": 17,
+          "iot_id": "",
+          "name": "Office"
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,27 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Připojení k lokálnímu Roborock S6",
+        "description": "Nastavte přímou lokální UDP komunikaci (port 54321) s vysavačem Roborock S6. Údaje Xiaomi Cloud jsou volitelné a slouží pouze ke stahování aktualizovaných .rrmap souborů do lokální cache.",
+        "data": {
+          "host": "IP adresa vysavače",
+          "token": "32znakový hexadecimální miIO token",
+          "scan_interval": "Interval dotazování (sekundy)",
+          "xiaomi_country": "Region Xiaomi serveru (de, cn, us, sg)",
+          "xiaomi_user_id": "Xiaomi User ID (volitelné pro obnovu mapy)",
+          "xiaomi_service_token": "Xiaomi Service Token (volitelné pro obnovu mapy)",
+          "xiaomi_ssecurity": "Xiaomi ssecurity klíč (volitelné pro obnovu mapy)"
+        }
+      }
+    },
+    "error": {
+      "cannot_connect": "Nepodařilo se navázat UDP spojení s vysavačem na portu 54321.",
+      "invalid_token": "Token musí být platný 32znakový hexadecimální řetězec.",
+      "unknown": "Došlo k neočekávané chybě."
+    },
+    "abort": {
+      "already_configured": "Tento vysavač Roborock S6 je již nakonfigurován."
+    }
+  }
+}

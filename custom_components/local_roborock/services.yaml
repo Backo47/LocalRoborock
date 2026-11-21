@@ -1,0 +1,233 @@
+clean_segments:
+  name: Clean Room Segments
+  description: Start targeted cleaning of one or more room segment IDs or room names on the active floor.
+  fields:
+    segments:
+      name: Rooms / Segment IDs
+      description: List of room segment IDs (e.g. [16, 18]) or configured Czech room names (e.g. ["Obývák", "Kuchyně"]).
+      required: true
+      example: '["Obývák", "Kuchyně"]'
+      selector:
+        object:
+    repeat:
+      name: Repeat Passes
+      description: Number of cleaning passes (1 to 3).
+      default: 1
+      selector:
+        number:
+          min: 1
+          max: 3
+          mode: box
+
+clean_zone:
+  name: Clean Rectangular Zone
+  description: Clean a rectangular zone specified in Roborock millimeter coordinates ([25600, 25600] = dock).
+  fields:
+    x1:
+      name: X1 (mm)
+      required: true
+      selector:
+        number:
+          min: 0
+          max: 51200
+    y1:
+      name: Y1 (mm)
+      required: true
+      selector:
+        number:
+          min: 0
+          max: 51200
+    x2:
+      name: X2 (mm)
+      required: true
+      selector:
+        number:
+          min: 0
+          max: 51200
+    y2:
+      name: Y2 (mm)
+      required: true
+      selector:
+        number:
+          min: 0
+          max: 51200
+    repeat:
+      name: Repeat Passes
+      default: 1
+      selector:
+        number:
+          min: 1
+          max: 3
+
+goto:
+  name: Go To Target
+  description: Navigate the vacuum to a specific (x, y) millimeter coordinate on the active map.
+  fields:
+    x:
+      name: X (mm)
+      required: true
+      selector:
+        number:
+          min: 0
+          max: 51200
+    y:
+      name: Y (mm)
+      required: true
+      selector:
+        number:
+          min: 0
+          max: 51200
+
+refresh_map:
+  name: Refresh Floor Map
+  description: Fetch a fresh binary .rrmap for the specified floor (or active floor), cache it locally, and re-render the map image.
+  fields:
+    floor:
+      name: Floor Slot (0..3)
+      required: false
+      selector:
+        number:
+          min: 0
+          max: 3
+
+merge_rooms:
+  name: Merge Room Segments
+  description: Merge two adjacent room segment IDs on the active floor map (merge_segment).
+  fields:
+    segment_a:
+      name: First Segment ID
+      required: true
+      selector:
+        number:
+          min: 1
+          max: 31
+    segment_b:
+      name: Second Segment ID
+      required: true
+      selector:
+        number:
+          min: 1
+          max: 31
+
+split_room:
+  name: Split Room Segment
+  description: Split a room segment along a dividing line (x1, y1) -> (x2, y2) in millimeter coordinates (split_segment).
+  fields:
+    segment_id:
+      name: Room Segment ID
+      required: true
+      selector:
+        number:
+          min: 1
+          max: 31
+    x1:
+      name: X1 (mm)
+      required: true
+      selector:
+        number:
+          min: 0
+          max: 51200
+    y1:
+      name: Y1 (mm)
+      required: true
+      selector:
+        number:
+          min: 0
+          max: 51200
+    x2:
+      name: X2 (mm)
+      required: true
+      selector:
+        number:
+          min: 0
+          max: 51200
+    y2:
+      name: Y2 (mm)
+      required: true
+      selector:
+        number:
+          min: 0
+          max: 51200
+
+add_map_restriction:
+  name: Add Map Restriction (Wall / No-Go / No-Mop)
+  description: Safely add a virtual wall, No-Go zone, or No-Mop zone while backing up and preserving all existing restrictions on the active floor.
+  fields:
+    restriction_type:
+      name: Restriction Type
+      required: true
+      selector:
+        select:
+          options:
+            - virtual_wall
+            - no_go_zone
+            - no_mop_zone
+    x1:
+      name: X1 (mm)
+      required: true
+      selector:
+        number:
+          min: 0
+          max: 51200
+    y1:
+      name: Y1 (mm)
+      required: true
+      selector:
+        number:
+          min: 0
+          max: 51200
+    x2:
+      name: X2 (mm)
+      required: true
+      selector:
+        number:
+          min: 0
+          max: 51200
+    y2:
+      name: Y2 (mm)
+      required: true
+      selector:
+        number:
+          min: 0
+          max: 51200
+
+set_map_restrictions:
+  name: Set Complete Map Restrictions
+  description: Save a complete updated list of virtual walls, No-Go zones, and No-Mop zones on the active floor (automatically backs up previous state).
+  fields:
+    virtual_walls:
+      name: Virtual Walls (list of [x1, y1, x2, y2])
+      required: false
+      selector:
+        object:
+    forbidden_zones:
+      name: No-Go Zones (list of 8-coord quads or 4-coord rects)
+      required: false
+      selector:
+        object:
+    no_mop_zones:
+      name: No-Mop Zones (list of 8-coord quads or 4-coord rects)
+      required: false
+      selector:
+        object:
+
+delete_floor_map:
+  name: Delete Stored Floor Map
+  description: Delete a specific multi-floor map slot (0..3) from the vacuum's internal memory (del_map).
+  fields:
+    floor:
+      name: Floor Slot (0..3)
+      required: true
+      selector:
+        number:
+          min: 0
+          max: 3
+
+reset_active_map:
+  name: Reset Active Floor Map
+  description: Clear/reset the currently active map on the vacuum to force full re-mapping on the next cleaning run (reset_map).
+
+start_new_floor_mapping:
+  name: Start New Floor Mapping Run
+  description: Ensure multi-map saving is enabled and start a full-floor exploration & cleaning run (app_start) to map a new floor.
+

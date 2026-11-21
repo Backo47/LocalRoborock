@@ -1,0 +1,33 @@
+[project]
+name = "local-roborock"
+version = "0.1.0"
+description = "Local-only integration and tools for Roborock S6"
+requires-python = ">=3.13"
+dependencies = [
+    "cryptography>=42.0.0",
+]
+
+[project.scripts]
+local-roborock = "custom_components.local_roborock.cli:main"
+
+[project.optional-dependencies]
+dev = [
+    "pytest",
+    "ruff",
+]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["."]
+addopts = "-v"
+
+[tool.ruff]
+line-length = 100
+target-version = "py313"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B"]
+
+[tool.ruff.format]
+quote-style = "double"
+indent-style = "space"
