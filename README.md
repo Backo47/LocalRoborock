@@ -1,6 +1,7 @@
 # LocalRoborock – Native Local Home Assistant Integration & Interactive Map Editor for Roborock S6
 
-[![CI](https://github.com/backo47/LocalRoborock/actions/workflows/ci.yml/badge.svg)](https://github.com/backo47/LocalRoborock/actions/workflows/ci.yml)
+[![CI](https://github.com/Backo47/LocalRoborock/actions/workflows/ci.yml/badge.svg)](https://github.com/Backo47/LocalRoborock/actions/workflows/ci.yml)
+[![Validate HACS & Hassfest](https://github.com/Backo47/LocalRoborock/actions/workflows/validate.yml/badge.svg)](https://github.com/Backo47/LocalRoborock/actions/workflows/validate.yml)
 [![HACS Custom](https://img.shields.io/badge/HACS-Custom-41BDF5.svg)](https://github.com/hacs/integration)
 [![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
 
@@ -41,7 +42,7 @@ Unlike generic cloud-dependent integrations, **LocalRoborock** executes all devi
 1. Open **HACS** in Home Assistant → **Integrations** → click the top-right menu (`⋮`) → **Custom repositories**.
 2. Enter the repository URL:
    ```text
-   https://github.com/backo47/LocalRoborock
+   https://github.com/Backo47/LocalRoborock
    ```
    and select category **Integration**.
 3. Click **Download** on **Local Roborock S6** and restart Home Assistant.
