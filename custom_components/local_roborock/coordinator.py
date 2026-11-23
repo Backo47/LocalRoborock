@@ -176,13 +176,20 @@ class LocalRoborockRuntime:
                 pass
 
         active_slot = status.active_map_slot
-        # If no cached map exists for active slot and cloud session is configured, try fetching once
-        if active_slot not in self._map_by_slot and self.cloud_session is not None:
+        is_moving = bool(
+            status.in_cleaning
+            or status.in_returning
+            or status.state in (5, 6, 11, 15, 16, 17, 18)
+        )
+        # Automatically refresh map when missing or during active cleaning / navigation
+        if self.cloud_session is not None and (
+            active_slot not in self._map_by_slot or is_moving
+        ):
             try:
                 await self.async_refresh_map(slot=active_slot)
             except Exception as err:
                 _LOGGER.debug(
-                    "Automatic initial map fetch for slot %d skipped: %s", active_slot, err
+                    "Automatic map fetch for slot %d skipped: %s", active_slot, err
                 )
 
         parsed_map, map_png = self._map_by_slot.get(active_slot, (None, None))

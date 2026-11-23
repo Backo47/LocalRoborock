@@ -6,10 +6,14 @@ from .entity import LocalRoborockEntity
 
 try:
     from homeassistant.components.select import SelectEntity
+    from homeassistant.const import EntityCategory
 except ImportError:
 
     class SelectEntity:  # type: ignore[no-redef]
         pass
+
+    class EntityCategory:  # type: ignore[no-redef]
+        CONFIG = "config"
 
 
 async def async_setup_entry(hass: Any, entry: Any, async_add_entities: Any) -> None:
@@ -23,6 +27,7 @@ class RoborockFloorMapSelectEntity(LocalRoborockEntity, SelectEntity):
 
     _attr_name = "Active Floor Map"
     _attr_icon = "mdi:layers-outline"
+    _attr_entity_category = EntityCategory.CONFIG
 
     def __init__(self, coordinator: Any, entry_id: str) -> None:
         super().__init__(coordinator, entry_id, "select_active_floor")

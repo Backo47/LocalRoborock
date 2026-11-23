@@ -6,10 +6,14 @@ from .entity import LocalRoborockEntity
 
 try:
     from homeassistant.components.binary_sensor import BinarySensorEntity
+    from homeassistant.const import EntityCategory
 except ImportError:
 
     class BinarySensorEntity:  # type: ignore[no-redef]
         pass
+
+    class EntityCategory:  # type: ignore[no-redef]
+        DIAGNOSTIC = "diagnostic"
 
 
 async def async_setup_entry(hass: Any, entry: Any, async_add_entities: Any) -> None:
@@ -28,6 +32,7 @@ class RoborockMopAttachedBinarySensor(LocalRoborockEntity, BinarySensorEntity):
 
     _attr_name = "Mop Attached"
     _attr_icon = "mdi:water-check"
+    _attr_entity_category = EntityCategory.DIAGNOSTIC
 
     def __init__(self, coordinator: Any, entry_id: str) -> None:
         super().__init__(coordinator, entry_id, "binary_mop_attached")
@@ -42,6 +47,7 @@ class RoborockCleaningActiveBinarySensor(LocalRoborockEntity, BinarySensorEntity
 
     _attr_name = "Cleaning Active"
     _attr_icon = "mdi:robot-vacuum-variant"
+    _attr_entity_category = EntityCategory.DIAGNOSTIC
 
     def __init__(self, coordinator: Any, entry_id: str) -> None:
         super().__init__(coordinator, entry_id, "binary_cleaning_active")

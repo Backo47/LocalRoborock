@@ -7,11 +7,15 @@ from .entity import LocalRoborockEntity
 
 try:
     from homeassistant.components.image import ImageEntity
+    from homeassistant.const import EntityCategory
 except ImportError:
 
     class ImageEntity:  # type: ignore[no-redef]
         def __init__(self, hass: Any = None) -> None:
             pass
+
+    class EntityCategory:  # type: ignore[no-redef]
+        DIAGNOSTIC = "diagnostic"
 
 
 async def async_setup_entry(hass: Any, entry: Any, async_add_entities: Any) -> None:
@@ -26,6 +30,7 @@ class RoborockFloorMapImageEntity(LocalRoborockEntity, ImageEntity):
     _attr_name = "Floor Map"
     _attr_icon = "mdi:map"
     _attr_content_type = "image/png"
+    _attr_entity_category = EntityCategory.DIAGNOSTIC
 
     def __init__(self, coordinator: Any, entry_id: str, hass: Any = None) -> None:
         LocalRoborockEntity.__init__(self, coordinator, entry_id, "image_floor_map")

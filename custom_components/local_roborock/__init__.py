@@ -70,10 +70,25 @@ async def async_setup_entry(hass: Any, entry: Any) -> bool:
     await coordinator.async_config_entry_first_refresh()
 
     hass.data.setdefault(DOMAIN, {})[entry.entry_id] = coordinator
+    await _async_cleanup_legacy_room_button_entities(hass, entry.entry_id)
     await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
 
     _register_domain_services(hass)
     return True
+
+
+async def _async_cleanup_legacy_room_button_entities(hass: Any, entry_id: str) -> None:
+    """Remove legacy per-room button entities from Home Assistant's entity registry."""
+    try:
+        from homeassistant.helpers import entity_registry as er
+
+        ent_reg = er.async_get(hass)
+        entries = er.async_entries_for_config_entry(ent_reg, entry_id)
+        for reg_entry in list(entries):
+            if "_button_clean_f" in (reg_entry.unique_id or ""):
+                ent_reg.async_remove(reg_entry.entity_id)
+    except Exception:
+        pass
 
 
 async def async_unload_entry(hass: Any, entry: Any) -> bool:

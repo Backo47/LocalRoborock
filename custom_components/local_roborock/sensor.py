@@ -229,7 +229,7 @@ class LocalRoborockSensorEntity(LocalRoborockEntity, SensorEntity):
         self._attr_native_unit_of_measurement = spec.unit
         self._attr_device_class = spec.device_class
         self._attr_state_class = spec.state_class
-        self._attr_entity_category = spec.entity_category
+        self._attr_entity_category = spec.entity_category or EntityCategory.DIAGNOSTIC
 
     @property
     def native_value(self) -> Any:

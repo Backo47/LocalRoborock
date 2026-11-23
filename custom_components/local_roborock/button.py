@@ -26,7 +26,7 @@ CONSUMABLE_RESET_BUTTONS: tuple[tuple[str, str, str], ...] = (
 
 
 async def async_setup_entry(hass: Any, entry: Any, async_add_entities: Any) -> None:
-    """Set up Local Roborock S6 action and room-cleaning buttons."""
+    """Set up Local Roborock S6 diagnostic/config buttons (no per-room tile clutter)."""
     coordinator = hass.data["local_roborock"][entry.entry_id]
     entities: list[Any] = [
         RoborockLocateButton(coordinator, entry.entry_id),
@@ -38,20 +38,6 @@ async def async_setup_entry(hass: Any, entry: Any, async_add_entities: Any) -> N
             RoborockResetConsumableButton(coordinator, entry.entry_id, part_key, title, icon)
         )
 
-    # Create a one-click room cleaning button for every configured room across all floors
-    for floor_slot, floor_cfg in sorted(coordinator.runtime.room_store.floors.items()):
-        for seg_id, room in sorted(floor_cfg.rooms.items()):
-            entities.append(
-                RoborockCleanRoomButton(
-                    coordinator=coordinator,
-                    entry_id=entry.entry_id,
-                    floor_slot=floor_slot,
-                    floor_name=floor_cfg.name,
-                    segment_id=seg_id,
-                    room_name=room.name or f"Room {seg_id}",
-                )
-            )
-
     async_add_entities(entities)
 
 
@@ -60,6 +46,7 @@ class RoborockLocateButton(LocalRoborockEntity, ButtonEntity):
 
     _attr_name = "Locate Vacuum"
     _attr_icon = "mdi:map-marker-radius"
+    _attr_entity_category = EntityCategory.DIAGNOSTIC
 
     def __init__(self, coordinator: Any, entry_id: str) -> None:
         super().__init__(coordinator, entry_id, "button_locate")
@@ -73,6 +60,7 @@ class RoborockRefreshMapButton(LocalRoborockEntity, ButtonEntity):
 
     _attr_name = "Refresh Floor Map"
     _attr_icon = "mdi:map-search"
+    _attr_entity_category = EntityCategory.DIAGNOSTIC
 
     def __init__(self, coordinator: Any, entry_id: str) -> None:
         super().__init__(coordinator, entry_id, "button_refresh_map")

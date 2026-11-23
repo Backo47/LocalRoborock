@@ -130,8 +130,19 @@ class LocalRoborockVacuumEntity(LocalRoborockEntity, StateVacuumEntity):
         rooms_attr = (
             {r.segment_id: r.name for r in floor_cfg.rooms.values()} if floor_cfg else {}
         )
+        pm = self.data.parsed_map
+        robot_mm = [pm.robot.x, pm.robot.y, pm.robot.angle] if (pm and pm.robot) else None
+        charger_mm = [pm.charger.x, pm.charger.y] if (pm and pm.charger) else None
+        # Downsample path if very long so state attributes remain lightweight
+        raw_path = pm.path if pm else []
+        step = max(1, len(raw_path) // 300)
+        path_mm = [[pt[0], pt[1]] for pt in raw_path[::step]]
+        pred_mm = [[pt[0], pt[1]] for pt in (pm.predicted_path if pm else [])]
+
         return {
             "roborock_state": st.state_name,
+            "roborock_state_code": st.state,
+            "fan_power_code": st.fan_power,
             "error_code": st.error_code,
             "error_description": st.error_name,
             "clean_area_m2": st.clean_area_m2,
@@ -141,6 +152,12 @@ class LocalRoborockVacuumEntity(LocalRoborockEntity, StateVacuumEntity):
             "floor_rooms": rooms_attr,
             "water_box_attached": st.water_box_status,
             "dnd_enabled": st.dnd_enabled,
+            "in_cleaning": st.in_cleaning,
+            "in_returning": st.in_returning,
+            "robot_mm": robot_mm,
+            "charger_mm": charger_mm,
+            "path_mm": path_mm,
+            "predicted_path_mm": pred_mm,
         }
 
     async def async_start(self) -> None:
