@@ -21,7 +21,7 @@ from .map_editor import MapRestrictionEditor
 from .map_fetcher import XiaomiCloudSession
 from .models import ZoneCoordinates
 
-__version__ = "0.1.0"
+__version__ = "0.2.0"
 
 PLATFORMS: list[str] = [
     "vacuum",
@@ -71,10 +71,24 @@ async def async_setup_entry(hass: Any, entry: Any) -> bool:
 
     hass.data.setdefault(DOMAIN, {})[entry.entry_id] = coordinator
     await _async_cleanup_legacy_room_button_entities(hass, entry.entry_id)
+    await runtime.async_regenerate_interactive_html(
+        active_slot=coordinator.data.status.active_map_slot
+    )
+    _register_frontend_tile_hook(hass)
     await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
 
     _register_domain_services(hass)
     return True
+
+
+def _register_frontend_tile_hook(hass: Any) -> None:
+    """Register `/local/local_roborock_hook.js` with Home Assistant frontend."""
+    try:
+        from homeassistant.components.frontend import add_extra_js_url
+
+        add_extra_js_url(hass, "/local/local_roborock_hook.js?v=1")
+    except Exception:
+        pass
 
 
 async def _async_cleanup_legacy_room_button_entities(hass: Any, entry_id: str) -> None:

@@ -169,6 +169,10 @@ def test_phase6_and_7_map_editor_and_interactive_ui(tmp_path: Path, capsys: obje
     assert "Ložnice" in html_str
     assert "data:image/png;base64," in html_str
 
+    # Also verify empty floors_data generates valid welcome UI for brand-new users
+    empty_html = generate_interactive_map_html({}, active_slot=0)
+    assert "empty-map-card" in empty_html
+
     # 3. Test CLI map ui and map-edit --dry-run
     (tmp_path / "map_slot_1.rrmap").write_bytes(gz_data)
     env_file = tmp_path / ".env"

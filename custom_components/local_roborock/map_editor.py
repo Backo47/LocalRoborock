@@ -9,7 +9,12 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
-from .rrmap import ParsedRRMap, extract_room_run_lengths, render_rrmap_png
+from .rrmap import (
+    ParsedRRMap,
+    compute_content_bbox,
+    extract_room_run_lengths,
+    render_rrmap_png,
+)
 
 
 def rect_to_quad(x1: int, y1: int, x2: int, y2: int) -> tuple[int, int, int, int, int, int, int, int]:
@@ -97,6 +102,7 @@ def generate_interactive_map_html(
         png_bytes = render_rrmap_png(parsed, scale=4)
         b64_png = base64.b64encode(png_bytes).decode("ascii")
         runs = extract_room_run_lengths(parsed, step=2)
+        crop_x, crop_y, crop_w, crop_h = compute_content_bbox(parsed, padding_px=8)
 
         rooms_meta: dict[str, Any] = {}
         for seg_id, stats in sorted(parsed.rooms.items()):
@@ -122,6 +128,10 @@ def generate_interactive_map_html(
             "height": parsed.image_height,
             "left": parsed.image_left,
             "top": parsed.image_top,
+            "crop_x": crop_x,
+            "crop_y": crop_y,
+            "crop_w": crop_w,
+            "crop_h": crop_h,
             "scale": 4,
             "image_b64": f"data:image/png;base64,{b64_png}",
             "charger": (
@@ -141,7 +151,12 @@ def generate_interactive_map_html(
         }
 
     floors_json = json.dumps(js_floors, ensure_ascii=False)
-    default_slot = str(active_slot if active_slot in floors_data else next(iter(floors_data)))
+    if active_slot in floors_data:
+        default_slot = str(active_slot)
+    elif floors_data:
+        default_slot = str(next(iter(floors_data)))
+    else:
+        default_slot = "0"
 
     return f"""<!DOCTYPE html>
 <html lang="cs">
@@ -152,7 +167,7 @@ def generate_interactive_map_html(
   <style>
     :root {{
       --bg: #0f172a;
-      --glass: rgba(30, 41, 59, 0.86);
+      --glass: rgba(30, 41, 59, 0.88);
       --glass-border: rgba(255, 255, 255, 0.12);
       --accent: #38bdf8;
       --accent-dark: #0284c7;
@@ -162,7 +177,13 @@ def generate_interactive_map_html(
       --warning: #f59e0b;
       --danger: #ef4444;
     }}
-    * {{ box-sizing: border-box; user-select: none; }}
+    * {{
+      box-sizing: border-box;
+      user-select: none;
+      -webkit-user-select: none;
+      -webkit-touch-callout: none;
+      -webkit-tap-highlight-color: transparent;
+    }}
     body {{
       margin: 0;
       background: var(--bg);
@@ -179,16 +200,16 @@ def generate_interactive_map_html(
     /* --- TOP HERO HEADER (Xiaomi Home App style) --- */
     header.hero {{
       position: absolute;
-      top: 12px;
+      top: 10px;
       left: 50%;
       transform: translateX(-50%);
-      width: min(680px, calc(100vw - 24px));
+      width: min(680px, calc(100vw - 20px));
       background: var(--glass);
       backdrop-filter: blur(14px);
       -webkit-backdrop-filter: blur(14px);
       border: 1px solid var(--glass-border);
       border-radius: 20px;
-      padding: 12px 18px 14px;
+      padding: 11px 16px 13px;
       z-index: 20;
       box-shadow: 0 12px 32px rgba(0, 0, 0, 0.45);
     }}
@@ -196,29 +217,51 @@ def generate_interactive_map_html(
       display: flex;
       align-items: center;
       justify-content: space-between;
-      margin-bottom: 10px;
+      margin-bottom: 9px;
+      gap: 6px;
     }}
+    .left-nav {{
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }}
+    .back-btn {{
+      background: rgba(15, 23, 42, 0.75);
+      color: var(--text);
+      border: 1px solid var(--glass-border);
+      border-radius: 12px;
+      width: 34px;
+      height: 34px;
+      font-size: 1.05rem;
+      font-weight: 700;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+    }}
+    .back-btn:hover {{ border-color: var(--accent); }}
     .floor-pill {{
       background: rgba(15, 23, 42, 0.75);
       color: var(--text);
       border: 1px solid var(--glass-border);
       border-radius: 12px;
-      padding: 6px 10px;
-      font-size: 0.8rem;
+      padding: 6px 9px;
+      font-size: 0.78rem;
       font-weight: 600;
       cursor: pointer;
     }}
     .title-center {{
       text-align: center;
+      flex: 1;
     }}
     .title-center h1 {{
       margin: 0;
-      font-size: 1.15rem;
+      font-size: 1.1rem;
       font-weight: 700;
       letter-spacing: 0.01em;
     }}
     .status-subtitle {{
-      font-size: 0.78rem;
+      font-size: 0.76rem;
       color: var(--success);
       font-weight: 600;
       margin-top: 2px;
@@ -240,7 +283,7 @@ def generate_interactive_map_html(
       border: 1px solid var(--glass-border);
       border-radius: 12px;
       padding: 6px 11px;
-      font-size: 0.82rem;
+      font-size: 0.8rem;
       font-weight: 600;
       cursor: pointer;
       display: flex;
@@ -257,7 +300,7 @@ def generate_interactive_map_html(
       grid-template-columns: 1fr 1fr 1fr;
       text-align: center;
       border-top: 1px solid rgba(255, 255, 255, 0.08);
-      padding-top: 10px;
+      padding-top: 9px;
     }}
     .metric-box {{
       position: relative;
@@ -272,24 +315,24 @@ def generate_interactive_map_html(
       background: rgba(255, 255, 255, 0.1);
     }}
     .metric-val {{
-      font-size: 1.45rem;
+      font-size: 1.4rem;
       font-weight: 700;
       color: #ffffff;
       line-height: 1.1;
     }}
     .metric-unit {{
-      font-size: 0.82rem;
+      font-size: 0.8rem;
       font-weight: 500;
       color: var(--muted);
       margin-left: 2px;
     }}
     .metric-label {{
-      font-size: 0.74rem;
+      font-size: 0.72rem;
       color: var(--muted);
-      margin-top: 3px;
+      margin-top: 2px;
     }}
 
-    /* --- CENTER INTERACTIVE MAP CANVAS --- */
+    /* --- CENTER INTERACTIVE MAP CANVAS (AUTO-CROPPED TO FILL VIEWPORT) --- */
     main.map-viewport {{
       flex: 1;
       width: 100vw;
@@ -297,7 +340,7 @@ def generate_interactive_map_html(
       display: flex;
       align-items: center;
       justify-content: center;
-      padding: 130px 16px 140px;
+      padding: 122px 10px 132px;
       overflow: hidden;
       position: relative;
     }}
@@ -306,32 +349,34 @@ def generate_interactive_map_html(
       display: flex;
       align-items: center;
       justify-content: center;
-      max-width: 100%;
-      max-height: 100%;
+      width: 100%;
+      height: 100%;
     }}
     canvas {{
-      cursor: pointer;
-      max-width: min(860px, 94vw);
-      max-height: calc(100vh - 285px);
+      touch-action: none;
+      outline: none;
+      -webkit-tap-highlight-color: transparent;
+      max-width: min(760px, 96vw);
+      max-height: calc(100vh - 260px);
       width: auto;
       height: auto;
-      border-radius: 16px;
+      border-radius: 18px;
       filter: drop-shadow(0 16px 40px rgba(0,0,0,0.55));
     }}
 
     /* --- FLOATING RIGHT ACTION BUTTONS (Pin & Go, Fan Power, Passes) --- */
     .fab-stack {{
       position: absolute;
-      right: max(16px, calc(50vw - 340px));
-      bottom: 148px;
+      right: max(14px, calc(50vw - 340px));
+      bottom: 142px;
       display: flex;
       flex-direction: column;
-      gap: 10px;
+      gap: 9px;
       z-index: 20;
     }}
     .fab-btn {{
-      width: 46px;
-      height: 46px;
+      width: 45px;
+      height: 45px;
       border-radius: 14px;
       background: var(--glass);
       backdrop-filter: blur(12px);
@@ -366,7 +411,7 @@ def generate_interactive_map_html(
     /* Fan Power Popover */
     .fan-popover {{
       position: absolute;
-      right: 56px;
+      right: 54px;
       bottom: 0;
       background: var(--glass);
       backdrop-filter: blur(16px);
@@ -403,14 +448,14 @@ def generate_interactive_map_html(
     /* --- BOTTOM FLOATING CONTROLS (Mode Tabs + Dock / Clean Bar) --- */
     footer.bottom-bar {{
       position: absolute;
-      bottom: 14px;
+      bottom: 12px;
       left: 50%;
       transform: translateX(-50%);
-      width: min(680px, calc(100vw - 24px));
+      width: min(680px, calc(100vw - 20px));
       z-index: 20;
       display: flex;
       flex-direction: column;
-      gap: 10px;
+      gap: 9px;
     }}
     .mode-row {{
       display: flex;
@@ -431,9 +476,9 @@ def generate_interactive_map_html(
       background: transparent;
       border: none;
       color: var(--muted);
-      padding: 8px 18px;
+      padding: 8px 17px;
       border-radius: 12px;
-      font-size: 0.86rem;
+      font-size: 0.85rem;
       font-weight: 600;
       cursor: pointer;
       transition: all 0.15s;
@@ -457,8 +502,8 @@ def generate_interactive_map_html(
     .big-action-btn {{
       border: none;
       border-radius: 14px;
-      padding: 13px 16px;
-      font-size: 0.95rem;
+      padding: 12px 15px;
+      font-size: 0.94rem;
       font-weight: 700;
       cursor: pointer;
       display: flex;
@@ -601,10 +646,10 @@ def generate_interactive_map_html(
     /* Toast & Helper Banner */
     #toast {{
       position: fixed;
-      top: 138px;
+      top: 132px;
       left: 50%;
       transform: translateX(-50%);
-      background: rgba(15, 23, 42, 0.92);
+      background: rgba(15, 23, 42, 0.94);
       border: 1px solid var(--accent);
       color: #fff;
       padding: 8px 16px;
@@ -622,9 +667,12 @@ def generate_interactive_map_html(
   <!-- TOP HERO STATUS BAR -->
   <header class="hero">
     <div class="hero-top">
-      <select id="floor-select" class="floor-pill" title="Přepnout patro"></select>
+      <div class="left-nav">
+        <button id="btn-back" class="back-btn" title="Zpět do Home Assistantu">‹</button>
+        <select id="floor-select" class="floor-pill" title="Přepnout patro"></select>
+      </div>
       <div class="title-center">
-        <h1>Luxík (Roborock S6)</h1>
+        <h1 id="vac-title">Roborock S6</h1>
         <div class="status-subtitle">
           <span class="status-dot" id="status-dot"></span>
           <span id="status-text">Nabito (V doku)</span>
@@ -653,10 +701,20 @@ def generate_interactive_map_html(
 
   <div id="toast"></div>
 
-  <!-- FULLSCREEN INTERACTIVE MAP -->
+  <!-- FULLSCREEN INTERACTIVE MAP (CROPPED TO BUILDING BOUNDING BOX) -->
   <main class="map-viewport">
     <div id="canvas-wrap">
       <canvas id="map-canvas"></canvas>
+      <div id="empty-map-card" style="display:none;background:var(--glass);border:1px solid var(--glass-border);border-radius:20px;padding:28px;max-width:420px;text-align:center;box-shadow:0 16px 40px rgba(0,0,0,0.5);">
+        <div style="font-size:2.4rem;margin-bottom:10px;">🗺️</div>
+        <h2 style="margin:0 0 8px 0;font-size:1.1rem;">Mapa zatím není v lokální cache</h2>
+        <p style="font-size:0.84rem;color:var(--muted);line-height:1.45;margin:0 0 18px 0;">
+          Ovládání vysavače, výběr sacího výkonu i telemetrie fungují 100% lokálně ihned. Pro zobrazení interaktivní mapy klikněte na tlačítko níže pro stažení prvního snímku mapy z vysavače.
+        </p>
+        <button id="btn-empty-fetch" class="big-action-btn btn-clean" style="width:100%;">
+          🔄 Stáhnout mapu z vysavače
+        </button>
+      </div>
     </div>
   </main>
 
@@ -717,7 +775,7 @@ def generate_interactive_map_html(
     <div class="drawer-card">
       <h3>1. Kreslení do mapy</h3>
       <div style="font-size:0.75rem;color:var(--muted);margin-bottom:8px;">
-        Zvolte nástroj a tažením myší v mapě nakreslete novou zónu, zeď nebo dělicí čáru místnosti:
+        Zvolte nástroj a tažením v mapě nakreslete novou zónu, zeď nebo dělicí čáru místnosti:
       </div>
       <div class="tool-grid" id="editor-tools">
         <button class="drawer-btn" data-etool="nogo">🚫 + No-Go zóna</button>
@@ -765,12 +823,13 @@ def generate_interactive_map_html(
   <script>
     const FLOORS = {floors_json};
     let currentSlot = "{default_slot}";
-    let currentMode = "full"; // 'full' | 'rooms' | 'zone' | 'goto' | 'edit_nogo' | 'edit_nomop' | 'edit_wall' | 'edit_split'
+    let currentMode = "full";
     let repeatCount = 1;
-    let selectedRooms = []; // ordered array of segment IDs
+    let selectedRooms = [];
     let gotoPoint = null;
     let dragStart = null;
     let dragCurrent = null;
+    let isPointerDragging = false;
     let selectedRestriction = null;
     let restrictionsDirty = false;
     let liveVacuumState = {{
@@ -799,7 +858,25 @@ def generate_interactive_map_html(
     const btnSaveRestrictions = document.getElementById("btn-save-restrictions");
     const editorPendingBox = document.getElementById("editor-pending-box");
 
-    // --- Home Assistant REST Token & Polling ---
+    // Back button closes overlay modal or returns to previous Home Assistant screen
+    document.getElementById("btn-back").onclick = () => {{
+      try {{
+        if (window.parent && window.parent !== window) {{
+          window.parent.postMessage("local_roborock_close_modal", "*");
+          const modal = window.parent.document.getElementById("local-roborock-fullscreen-modal");
+          if (modal) {{
+            modal.remove();
+            return;
+          }}
+        }}
+      }} catch (e) {{}}
+      if (window.history.length > 1) {{
+        window.history.back();
+      }} else {{
+        window.top.location.href = "/";
+      }}
+    }};
+
     function getHaAccessToken() {{
       for (const win of [window, window.parent]) {{
         try {{
@@ -863,6 +940,9 @@ def generate_interactive_map_html(
         if (!vac) return;
 
         const attrs = vac.attributes;
+        if (attrs.friendly_name) {{
+          document.getElementById("vac-title").textContent = attrs.friendly_name;
+        }}
         const bat = attrs.battery_level !== undefined ? attrs.battery_level : 100;
         const area = attrs.clean_area_m2 !== undefined ? attrs.clean_area_m2 : 0;
         const timeMin = attrs.clean_time_min !== undefined ? Math.round(attrs.clean_time_min) : 0;
@@ -905,7 +985,6 @@ def generate_interactive_map_html(
           dot.style.background = "#94a3b8";
         }}
 
-        // Update fan popover active state
         if (attrs.fan_speed) {{
           liveVacuumState.fanSpeed = attrs.fan_speed;
           document.querySelectorAll(".fan-opt").forEach(btn => {{
@@ -913,7 +992,6 @@ def generate_interactive_map_html(
           }});
         }}
 
-        // Live robot pose & cleaning trajectory on active floor
         const activeSlot = String(attrs.active_map_slot !== undefined ? attrs.active_map_slot : currentSlot);
         if (activeSlot === currentSlot) {{
           if (Array.isArray(attrs.robot_mm) && attrs.robot_mm.length >= 2) {{
@@ -939,9 +1017,10 @@ def generate_interactive_map_html(
       }} catch (e) {{}}
     }}
 
-    function pxToMm(f, px, py) {{
-      const relY = (f.height - 1) - py;
-      const xMm = Math.round((px + f.left) * 50.0);
+    // --- Full-map pixel <-> Millimeter conversion ---
+    function pxToMm(f, fullPx, fullPy) {{
+      const relY = (f.height - 1) - fullPy;
+      const xMm = Math.round((fullPx + f.left) * 50.0);
       const yMm = Math.round((relY + f.top) * 50.0);
       return [xMm, yMm];
     }}
@@ -965,9 +1044,9 @@ def generate_interactive_map_html(
       return [Math.min(...xs), Math.min(...ys), Math.max(...xs), Math.max(...ys)];
     }}
 
-    function hitTestRoom(f, px, py) {{
-      const ix = Math.floor(px);
-      const iy = Math.floor(py);
+    function hitTestRoom(f, fullPx, fullPy) {{
+      const ix = Math.floor(fullPx);
+      const iy = Math.floor(fullPy);
       for (const [segId, r] of Object.entries(f.rooms)) {{
         for (const [rx, ry, rw, rh] of r.runs) {{
           if (ix >= rx && ix <= rx + rw && iy >= ry && iy <= ry + rh) {{
@@ -979,6 +1058,20 @@ def generate_interactive_map_html(
     }}
 
     function initApp() {{
+      const keys = Object.keys(FLOORS);
+      if (keys.length === 0) {{
+        canvas.style.display = "none";
+        floorSelect.style.display = "none";
+        document.getElementById("empty-map-card").style.display = "block";
+        document.getElementById("btn-empty-fetch").onclick = async () => {{
+          showToast("Stahuji první mapu z vysavače...");
+          const ok = await callHaService("local_roborock", "refresh_map", {{}});
+          if (ok) setTimeout(() => window.location.reload(), 2500);
+        }};
+        pollLiveVacuumState();
+        setInterval(pollLiveVacuumState, 3000);
+        return;
+      }}
       floorSelect.innerHTML = "";
       for (const [slot, f] of Object.entries(FLOORS)) {{
         const opt = document.createElement("option");
@@ -993,11 +1086,13 @@ def generate_interactive_map_html(
     }}
 
     function loadFloor(slot) {{
+      if (!FLOORS[slot]) return;
       currentSlot = slot;
       selectedRooms = [];
       gotoPoint = null;
       dragStart = null;
       dragCurrent = null;
+      isPointerDragging = false;
       selectedRestriction = null;
       restrictionsDirty = false;
       btnSaveRestrictions.style.display = "none";
@@ -1008,8 +1103,9 @@ def generate_interactive_map_html(
       liveVacuumState.pathMm = f.path || [];
       liveVacuumState.predictedPathMm = f.predicted_path || [];
 
-      canvas.width = f.width * f.scale;
-      canvas.height = f.height * f.scale;
+      // Set canvas size to the tight auto-cropped bounding box!
+      canvas.width = f.crop_w * f.scale;
+      canvas.height = f.crop_h * f.scale;
       baseImg.onload = () => {{ renderCanvas(); }};
       baseImg.src = f.image_b64;
       renderRestrictionsList();
@@ -1033,7 +1129,7 @@ def generate_interactive_map_html(
       }} else if (currentMode === "rooms") {{
         cleanLabel.textContent = selectedRooms.length > 0
           ? `Uklidit místnosti (${{selectedRooms.length}})`
-          : "Vyberte místnosti v mapě";
+          : "Klepněte na místnosti v mapě";
       }} else if (currentMode === "zone") {{
         cleanLabel.textContent = (dragStart && dragCurrent)
           ? "Uklidit vybranou zónu"
@@ -1045,16 +1141,23 @@ def generate_interactive_map_html(
 
     function renderCanvas() {{
       const f = FLOORS[currentSlot];
+      if (!f) return;
       const s = f.scale;
+      const cxOff = f.crop_x * s;
+      const cyOff = f.crop_y * s;
+
       ctx.clearRect(0, 0, canvas.width, canvas.height);
+      ctx.save();
+      // Shift entire drawing context by (-crop_x, -crop_y) so the house fills 100% of the canvas
+      ctx.translate(-cxOff, -cyOff);
       ctx.drawImage(baseImg, 0, 0);
 
-      // 1. Highlight selected rooms + order badge
+      // 1. Highlight selected rooms
       for (let i = 0; i < selectedRooms.length; i++) {{
         const segId = selectedRooms[i];
         const r = f.rooms[String(segId)];
         if (!r) continue;
-        ctx.fillStyle = "rgba(56, 189, 248, 0.38)";
+        ctx.fillStyle = "rgba(56, 189, 248, 0.42)";
         for (const [rx, ry, rw, rh] of r.runs) {{
           ctx.fillRect(rx * s, ry * s, rw * s, rh * s);
         }}
@@ -1107,7 +1210,7 @@ def generate_interactive_map_html(
         ctx.stroke();
       }});
 
-      // 5. Draw Predicted Path (dashed white/blue line)
+      // 5. Draw Predicted Path
       const predPath = liveVacuumState.predictedPathMm || [];
       if (predPath.length > 1) {{
         ctx.save();
@@ -1124,7 +1227,7 @@ def generate_interactive_map_html(
         ctx.restore();
       }}
 
-      // 6. Draw Live Cleaning Path Trajectory (smooth white line as in Xiaomi Home)
+      // 6. Draw Live Cleaning Path Trajectory
       const pathPts = liveVacuumState.pathMm || [];
       if (pathPts.length > 1) {{
         ctx.save();
@@ -1142,13 +1245,13 @@ def generate_interactive_map_html(
         ctx.restore();
       }}
 
-      // 7. Room labels & selection checkmarks
-      ctx.font = "bold 13px system-ui, sans-serif";
+      // 7. Room labels & selection order badge
+      ctx.font = "bold 12px system-ui, sans-serif";
       ctx.textAlign = "center";
       for (const r of Object.values(f.rooms)) {{
         const lx = r.cx_px * s;
-        const ly = r.cy_px * s + 22;
-        ctx.strokeStyle = "rgba(15, 23, 42, 0.9)";
+        const ly = r.cy_px * s + 20;
+        ctx.strokeStyle = "rgba(15, 23, 42, 0.92)";
         ctx.lineWidth = 3.5;
         ctx.strokeText(r.name, lx, ly);
         ctx.fillStyle = "#ffffff";
@@ -1158,12 +1261,15 @@ def generate_interactive_map_html(
         if (selIdx !== -1) {{
           ctx.fillStyle = "#38bdf8";
           ctx.beginPath();
-          ctx.arc(lx, r.cy_px * s - 16, 11, 0, Math.PI * 2);
+          ctx.arc(lx, r.cy_px * s - 15, 11, 0, Math.PI * 2);
           ctx.fill();
+          ctx.strokeStyle = "#ffffff";
+          ctx.lineWidth = 2;
+          ctx.stroke();
           ctx.fillStyle = "#0f172a";
           ctx.font = "bold 12px sans-serif";
-          ctx.fillText(String(selIdx + 1), lx, r.cy_px * s - 12);
-          ctx.font = "bold 13px system-ui, sans-serif";
+          ctx.fillText(String(selIdx + 1), lx, r.cy_px * s - 11);
+          ctx.font = "bold 12px system-ui, sans-serif";
         }}
       }}
 
@@ -1176,7 +1282,7 @@ def generate_interactive_map_html(
         ctx.strokeStyle = "#ffffff";
         ctx.lineWidth = 2;
         ctx.beginPath();
-        ctx.arc(dx * s, dy * s, 7, 0, Math.PI * 2);
+        ctx.arc(dx * s, dy * s, 6.5, 0, Math.PI * 2);
         ctx.fill();
         ctx.stroke();
         ctx.restore();
@@ -1192,24 +1298,22 @@ def generate_interactive_map_html(
           ctx.strokeStyle = "rgba(56, 189, 248, 0.45)";
           ctx.lineWidth = 4;
           ctx.beginPath();
-          ctx.arc(cx, cy, 15, 0, Math.PI * 2);
+          ctx.arc(cx, cy, 14, 0, Math.PI * 2);
           ctx.stroke();
         }}
-        // White vacuum disc with green/blue rim
         ctx.fillStyle = "#ffffff";
         ctx.strokeStyle = liveVacuumState.isCleaning ? "#38bdf8" : "#10b981";
-        ctx.lineWidth = 3;
+        ctx.lineWidth = 2.5;
         ctx.beginPath();
-        ctx.arc(cx, cy, 10, 0, Math.PI * 2);
+        ctx.arc(cx, cy, 9.5, 0, Math.PI * 2);
         ctx.fill();
         ctx.stroke();
-        // Lidar turret dot showing orientation
         const rad = ((rob.angle || 0) * Math.PI) / 180.0;
-        const tx = cx + Math.cos(rad) * 4.5;
-        const ty = cy - Math.sin(rad) * 4.5;
+        const tx = cx + Math.cos(rad) * 4;
+        const ty = cy - Math.sin(rad) * 4;
         ctx.fillStyle = "#f59e0b";
         ctx.beginPath();
-        ctx.arc(tx, ty, 3, 0, Math.PI * 2);
+        ctx.arc(tx, ty, 2.8, 0, Math.PI * 2);
         ctx.fill();
         ctx.restore();
       }}
@@ -1251,6 +1355,8 @@ def generate_interactive_map_html(
           ctx.strokeRect(rx, ry, rw, rh);
         }}
       }}
+
+      ctx.restore();
     }}
 
     // --- Map Editor Drawer & Restrictions List ---
@@ -1378,27 +1484,31 @@ def generate_interactive_map_html(
       }}
     }}
 
-    // --- Canvas Mouse & Touch Interaction ---
-    function getCanvasPx(clientX, clientY) {{
+    // --- Unified PointerEvents (fixes instant tap on Mobile & eliminates double-fire / grey flash) ---
+    function getFullMapPx(clientX, clientY) {{
       const f = FLOORS[currentSlot];
       const rect = canvas.getBoundingClientRect();
       const scaleX = canvas.width / rect.width;
       const scaleY = canvas.height / rect.height;
-      const px = ((clientX - rect.left) * scaleX) / f.scale;
-      const py = ((clientY - rect.top) * scaleY) / f.scale;
-      return [px, py];
+      const croppedPx = ((clientX - rect.left) * scaleX) / f.scale;
+      const croppedPy = ((clientY - rect.top) * scaleY) / f.scale;
+      return [croppedPx + f.crop_x, croppedPy + f.crop_y];
     }}
 
-    function handlePointerDown(clientX, clientY) {{
+    canvas.addEventListener("pointerdown", (e) => {{
+      e.preventDefault();
       const f = FLOORS[currentSlot];
-      const [px, py] = getCanvasPx(clientX, clientY);
+      const [px, py] = getFullMapPx(e.clientX, e.clientY);
       document.getElementById("fan-popover").classList.remove("open");
 
       if (currentMode === "full" || currentMode === "rooms") {{
         const segId = hitTestRoom(f, px, py);
         if (segId !== null) {{
           if (currentMode === "full") {{
-            setMode("rooms");
+            currentMode = "rooms";
+            document.querySelectorAll("#mode-pills .mode-pill").forEach(b => {{
+              b.classList.toggle("active", b.dataset.mode === "rooms");
+            }});
           }}
           const idx = selectedRooms.indexOf(segId);
           if (idx !== -1) selectedRooms.splice(idx, 1);
@@ -1411,45 +1521,33 @@ def generate_interactive_map_html(
         renderCanvas();
         updateBottomBarLabels();
       }} else {{
+        isPointerDragging = true;
+        try {{ canvas.setPointerCapture(e.pointerId); }} catch (err) {{}}
         dragStart = [px, py];
         dragCurrent = [px, py];
+        renderCanvas();
       }}
-    }}
+    }});
 
-    function handlePointerMove(clientX, clientY, isPressed) {{
-      if (!dragStart || !isPressed) return;
-      const [px, py] = getCanvasPx(clientX, clientY);
+    canvas.addEventListener("pointermove", (e) => {{
+      if (!isPointerDragging || !dragStart) return;
+      e.preventDefault();
+      const [px, py] = getFullMapPx(e.clientX, e.clientY);
       dragCurrent = [px, py];
       renderCanvas();
       updateBottomBarLabels();
-      if (currentMode.startsWith("edit_")) {{
-        updateEditorPendingAction();
-      }}
-    }}
+    }});
 
-    function handlePointerUp() {{
+    canvas.addEventListener("pointerup", (e) => {{
+      if (!isPointerDragging) return;
+      isPointerDragging = false;
+      try {{ canvas.releasePointerCapture(e.pointerId); }} catch (err) {{}}
       if (currentMode.startsWith("edit_") && dragStart && dragCurrent) {{
         updateEditorPendingAction();
         document.getElementById("editor-drawer").classList.add("open");
+        document.getElementById("drawer-backdrop").classList.add("open");
       }}
-    }}
-
-    canvas.addEventListener("mousedown", (e) => handlePointerDown(e.clientX, e.clientY));
-    canvas.addEventListener("mousemove", (e) => handlePointerMove(e.clientX, e.clientY, e.buttons === 1));
-    window.addEventListener("mouseup", () => handlePointerUp());
-
-    canvas.addEventListener("touchstart", (e) => {{
-      if (e.touches.length === 1) {{
-        handlePointerDown(e.touches[0].clientX, e.touches[0].clientY);
-      }}
-    }}, {{ passive: true }});
-    canvas.addEventListener("touchmove", (e) => {{
-      if (e.touches.length === 1 && dragStart) {{
-        e.preventDefault();
-        handlePointerMove(e.touches[0].clientX, e.touches[0].clientY, true);
-      }}
-    }}, {{ passive: false }});
-    canvas.addEventListener("touchend", () => handlePointerUp());
+    }});
 
     // --- UI Controls Event Listeners ---
     function setMode(mode) {{
@@ -1457,6 +1555,7 @@ def generate_interactive_map_html(
       gotoPoint = null;
       dragStart = null;
       dragCurrent = null;
+      isPointerDragging = false;
       document.querySelectorAll("#mode-pills .mode-pill").forEach(b => {{
         b.classList.toggle("active", b.dataset.mode === mode);
       }});
@@ -1465,11 +1564,12 @@ def generate_interactive_map_html(
         b.classList.toggle("active", `edit_${{b.dataset.etool}}` === mode);
       }});
       if (mode === "zone") {{
-        // Place a default centered zone rectangle so user immediately sees it
         const f = FLOORS[currentSlot];
-        dragStart = [f.width * 0.38, f.height * 0.38];
-        dragCurrent = [f.width * 0.62, f.height * 0.62];
-        showToast("Tažením v mapě upravte obdélník zóny");
+        const cx = f.crop_x + f.crop_w * 0.5;
+        const cy = f.crop_y + f.crop_h * 0.5;
+        dragStart = [cx - f.crop_w * 0.18, cy - f.crop_h * 0.18];
+        dragCurrent = [cx + f.crop_w * 0.18, cy + f.crop_h * 0.18];
+        showToast("Tažením prstem nebo myší v mapě označte zónu");
       }}
       renderCanvas();
       updateBottomBarLabels();
@@ -1483,7 +1583,7 @@ def generate_interactive_map_html(
       if (currentMode === "goto") setMode("full");
       else {{
         setMode("goto");
-        showToast("Klikněte do mapy na místo, kam má vysavač dojet");
+        showToast("Klepněte do mapy na místo, kam má vysavač dojet");
       }}
     }};
 
@@ -1522,7 +1622,6 @@ def generate_interactive_map_html(
       }});
     }};
 
-    // Bottom Dock & Clean buttons
     dockBtn.onclick = async () => {{
       showToast("Odesílám vysavač do nabíjecí stanice...");
       await callHaService("vacuum", "return_to_base", {{ entity_id: "vacuum.roborock_s6" }});
@@ -1536,7 +1635,7 @@ def generate_interactive_map_html(
       }}
       if (currentMode === "goto") {{
         if (!gotoPoint) {{
-          showToast("Nejprve klikněte do mapy na cílový bod", true);
+          showToast("Nejprve klepněte do mapy na cílový bod", true);
           return;
         }}
         showToast(`Vysavač jede na bod [${{gotoPoint[0]}}, ${{gotoPoint[1]}}]...`);
@@ -1545,7 +1644,7 @@ def generate_interactive_map_html(
       }}
       if (currentMode === "rooms") {{
         if (selectedRooms.length === 0) {{
-          showToast("Nejprve kliknutím do mapy vyberte alespoň jednu místnost", true);
+          showToast("Nejprve klepnutím do mapy vyberte alespoň jednu místnost", true);
           return;
         }}
         showToast(`Spouštím úklid vybraných místností (${{repeatCount}}×)...`);
@@ -1583,7 +1682,6 @@ def generate_interactive_map_html(
       if (ok) setTimeout(() => window.location.reload(), 2500);
     }};
 
-    // Slide-out Editor Drawer
     const drawer = document.getElementById("editor-drawer");
     const backdrop = document.getElementById("drawer-backdrop");
     document.getElementById("btn-open-editor").onclick = () => {{
@@ -1602,7 +1700,7 @@ def generate_interactive_map_html(
         const tool = `edit_${{btn.dataset.etool}}`;
         setMode(tool);
         closeDrawer();
-        showToast("Nakreslete tažením myší v mapě požadovaný prvek");
+        showToast("Nakreslete tažením v mapě požadovaný prvek");
       }};
     }});
 
@@ -1659,3 +1757,58 @@ def generate_interactive_map_html(
 </body>
 </html>
 """
+
+
+def generate_ha_frontend_hook_js() -> str:
+    """Generate a lightweight frontend hook script that opens our App UI when clicking the Roborock S6 tile."""
+    return """// LocalRoborock S6 - Automatic More-Info Interceptor Hook
+(function () {
+  if (window.__localRoborockHookInstalled) return;
+  window.__localRoborockHookInstalled = true;
+
+  function openRoborockAppModal() {
+    if (document.getElementById("local-roborock-fullscreen-modal")) return;
+    const modal = document.createElement("div");
+    modal.id = "local-roborock-fullscreen-modal";
+    modal.style.cssText =
+      "position:fixed;inset:0;width:100vw;height:100vh;z-index:99999;" +
+      "background:#0f172a;display:flex;flex-direction:column;animation:lrFadeIn 0.16s ease-out;";
+
+    const iframe = document.createElement("iframe");
+    iframe.src = "/local/local_roborock_map.html?t=" + Date.now();
+    iframe.style.cssText = "width:100%;height:100%;border:none;flex:1;";
+    modal.appendChild(iframe);
+    document.body.appendChild(modal);
+  }
+
+  function closeRoborockAppModal() {
+    const modal = document.getElementById("local-roborock-fullscreen-modal");
+    if (modal) modal.remove();
+  }
+
+  window.addEventListener("message", function (evt) {
+    if (evt && evt.data === "local_roborock_close_modal") {
+      closeRoborockAppModal();
+    }
+  });
+
+  // Intercept Home Assistant 'hass-more-info' event for vacuum.roborock_s6
+  window.addEventListener(
+    "hass-more-info",
+    function (evt) {
+      const entityId = evt && evt.detail && evt.detail.entityId;
+      if (
+        typeof entityId === "string" &&
+        entityId.startsWith("vacuum.") &&
+        entityId.includes("roborock")
+      ) {
+        evt.stopPropagation();
+        evt.preventDefault();
+        openRoborockAppModal();
+      }
+    },
+    true
+  );
+})();
+"""
+

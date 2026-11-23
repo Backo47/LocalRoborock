@@ -325,6 +325,45 @@ def extract_room_run_lengths(
     )
 
 
+def compute_content_bbox(
+    parsed: ParsedRRMap, padding_px: int = 8
+) -> tuple[int, int, int, int]:
+    """Compute tight bounding box (min_x, min_screen_y, crop_w, crop_h) around non-empty pixels."""
+    w = parsed.image_width
+    h = parsed.image_height
+    pixels = parsed.image_pixels
+    if w <= 0 or h <= 0 or len(pixels) < w * h:
+        return (0, 0, max(1, w), max(1, h))
+
+    min_x, max_x = w, 0
+    min_sy, max_sy = h, 0
+    found = False
+
+    for raw_y in range(h):
+        screen_y = (h - 1) - raw_y
+        row_off = raw_y * w
+        for px_x in range(w):
+            if (pixels[row_off + px_x] & 0x07) != 0:
+                found = True
+                if px_x < min_x:
+                    min_x = px_x
+                if px_x > max_x:
+                    max_x = px_x
+                if screen_y < min_sy:
+                    min_sy = screen_y
+                if screen_y > max_sy:
+                    max_sy = screen_y
+
+    if not found:
+        return (0, 0, w, h)
+
+    x0 = max(0, min_x - padding_px)
+    y0 = max(0, min_sy - padding_px)
+    x1 = min(w - 1, max_x + padding_px)
+    y1 = min(h - 1, max_sy + padding_px)
+    return (x0, y0, max(1, x1 - x0 + 1), max(1, y1 - y0 + 1))
+
+
 def _parse_quad_zones(
     payload: bytes,
 ) -> list[tuple[int, int, int, int, int, int, int, int]]:

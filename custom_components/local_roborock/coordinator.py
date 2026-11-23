@@ -273,13 +273,14 @@ class LocalRoborockRuntime:
             )
             floors_data[slot] = (fname, parsed, rnames)
 
-        if not floors_data:
-            return
-
         def _write_html() -> None:
+            from .map_editor import generate_ha_frontend_hook_js
+
             html_str = generate_interactive_map_html(floors_data, active_slot=active_slot)
             self.www_map_html_path.parent.mkdir(parents=True, exist_ok=True)
             self.www_map_html_path.write_text(html_str, encoding="utf-8")
+            hook_path = self.www_map_html_path.parent / "local_roborock_hook.js"
+            hook_path.write_text(generate_ha_frontend_hook_js(), encoding="utf-8")
 
         try:
             await asyncio.to_thread(_write_html)
