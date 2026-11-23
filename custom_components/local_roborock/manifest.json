@@ -6,6 +6,6 @@
   "documentation": "https://github.com/Backo47/LocalRoborock",
   "iot_class": "local_polling",
   "issue_tracker": "https://github.com/Backo47/LocalRoborock/issues",
-  "requirements": ["cryptography>=42.0.0"],
+  "requirements": [],
   "version": "0.2.0"
 }
